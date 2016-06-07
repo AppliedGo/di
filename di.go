@@ -63,7 +63,7 @@ Imagine a common scenario:
 
 HYPE[Action flow through the layers](actionflow.html)
 
-This action flow passes through the layers inwards and outwards.This action flow passes through the layers inwards and outwards.
+This action flow passes through the layers inwards and outwards.
 
 How can we accomplish this if the inner rings do not know anything about the outer rings?
 
