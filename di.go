@@ -26,24 +26,39 @@ Layered software architectures adhere to the Dependency Rule: Source code depend
 
 ## Software Architecture
 
-The nightmare of every software maintainer: After fixing a bug in a small utility function from the PDF formatter module, database queries start returning wrong results. After long and laborious search, it turns out that the database code uses the PDF utility function for formatting some strings.
-
-Sounds familiar?
-
-Bugs of this kind have inspired software engineers to think up ways of strucring software that effectively prohibits uncontrolled proliferation of mutual dependencies between the entities of a software system. The result is called a software architecture.
+Software architecture strives to provide structure to software systems, in order to make them robust, maintainable, extendable, testable, easier to develop, and easier to document.
 
 Many different [architecture styles and patterns](https://en.wikipedia.org/wiki/List_of_software_architecture_styles_and_patterns) have evolved over time, at different abstraction levels and with different levels of complexity. Among them, layered architectures seem to represent a fairly versatile concept, applicable to a large range of scenarios.
 
-
 ## The Clean Architecture
 
-An excellent summary of the principles of good layered architectures is [The Clean Architecture](http://blog.8thlight.com/uncle-bob/2012/08/13/the-clean-architecture.html), a blog article about the architecture of the same name. The Clean Architecture model consists of four layers (or more, if you need it) of increasing abstraction.
+At the center of any layered software architecture is the separation of concerns. In simple words: The less each layer knows about the other layers, the better.
+
+To achieve this, the layers form a hierarchy of abstraction levels. The Clean Architecture model describes them as (at least) four circles:
+
+* The innermost circle contains *Entities* that implement *Enterprise Business Rules*.
+* The second circle contains *Use Cases* that form the *Application Business Rules*.
+* The third circle contains all *Interface Adapters*, like: *Controllers*, *Gateways*, or *Presenters*.
+* The fourth circle contains the technical *Frameworks & Drivers*, like: *UI*, *Databases*, *External Interfaces*, etc.
 
 ![The Clean Architecture](cleanarchitecture.png)
 
+Read more about The Clean Architecture [here](http://blog.8thlight.com/uncle-bob/2012/08/13/the-clean-architecture.html).
+
+The central rule of The Clean Architecture is the **Dependency Rule**.
+
+But then, how can information flow between the layers without affecting the separation of concerns too much?
+
+
+
+
+
+The Clean Architecture model consists of four layers (or more, if you need it) of increasing abstraction.
+
+
+
 The layers are laid out as circles. The innermost circle
 
-At the center of any software architecture is the separation of concerns.
 
 ## The code
 
