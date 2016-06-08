@@ -207,6 +207,7 @@ A question to you: Can we inject dependencies without using interfaces?
 
 ## Further reading
 
-The excellent article [Applying The Clean Architecture to Go applications](http://manuel.kiessling.net/2012/09/28/applying-the-clean-architecture-to-go-applications/) not only goes deep into DI but also works through all four layers of the Clean Architecture. This is a great opportunity to see how entities, use cases, interfaces, and frameworks (speaking in Clean Architecture tongue) are used to build a tiny shop system.
+I definitely recommend reading the aforementioned [article about the Clean Architecture](http://blog.8thlight.com/uncle-bob/2012/08/13/the-clean-architecture.html) by [Robert "Uncle Bob" Martin](https://de.wikipedia.org/wiki/Robert_Cecil_Martin).
 
+The excellent article [Applying The Clean Architecture to Go applications](http://manuel.kiessling.net/2012/09/28/applying-the-clean-architecture-to-go-applications/) is a deep dive into impelenting DI in Go that builds upon all four layers of the Clean Architecture. This is a great opportunity to see how entities, use cases, interfaces, and frameworks (speaking in Clean Architecture lingo) are utilized to build a (toy) shop system.
 */
