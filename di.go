@@ -20,7 +20,7 @@ tags = ["Dependency Injection", "Separation Of Concerns", "Interface"]
 categories = ["Tutorial"]
 +++
 
-Layered software architectures adhere to the Dependency Rule: Source code dependencies can only point from lower-level layers to higher-level layers, and never vice versa. But at some point you need to connect the lower layers to the higher layers without violating the rule. Here is how.
+Layered software architectures adhere to the *Dependency Rule:* Source code in a lower-level layer can make use of code in higher-level layers, but never vice versa. Control flow, however, goes in both directions. How is this possible, given that higher-level code must not know anything about the code in lower levels?
 
 <!--more-->
 
@@ -28,186 +28,270 @@ Layered software architectures adhere to the Dependency Rule: Source code depend
 
 Software architecture strives to provide structure to software systems, in order to make them robust, maintainable, extendable, testable, easier to develop, and easier to document.
 
-Many different [architecture styles and patterns](https://en.wikipedia.org/wiki/List_of_software_architecture_styles_and_patterns) have evolved over time, at different abstraction levels and with different levels of complexity. Among them, layered architectures seem to represent a fairly versatile concept, applicable to a large range of scenarios.
+Many different [architecture patterns](https://en.wikipedia.org/wiki/List_of_software_architecture_styles_and_patterns) have evolved over time, at different abstraction levels and with different levels of complexity. Among these architecture patterns, layered architectures seem to represent a fairly versatile concept that is applicable to a large range of scenarios.
+
+Just to see how such an architecture may look like, let's have a brief look at the *Clean Architecture*, a layered architecture model that summarizes the idea of layering very well.
+
 
 ## The Clean Architecture
 
-At the center of any layered software architecture is the separation of concerns. In simple words: The less each layer knows about the other layers, the better.
+At the center of any layered software architecture is the separation of concerns. In simple words: The less each software module knows about the other modules, the better.
 
-To achieve this, the layers form a hierarchy of abstraction levels. The Clean Architecture model describes them as (at least) four concentric circles that represent different abstraction levels.
+To achieve this, the modules are organized into layers. Each layer represents a certain level of abstraction. The Clean Architecture model describes them as (at least) four concentric circles, with the innermost circle representing the highest abstraction level.
 
 ![The Clean Architecture](cleanarchitecture.png)
 
-Read more about The Clean Architecture [here](http://blog.8thlight.com/uncle-bob/2012/08/13/the-clean-architecture.html).
+(Discussing each layer in detail is outside the scope of this article. I briefly introduced the Clean Architecture here so that the dependency problem that is discussed below becomes clear. You can read more about The Clean Architecture [in this article by Robert C. Martin, a.k.a. "Uncle Bob"](http://blog.8thlight.com/uncle-bob/2012/08/13/the-clean-architecture.html). Definitely recommended!)
 
-The central rule of The Clean Architecture is the **Dependency Rule**. The rule says that the source code of each circle can only access code in an inner circle but never any code in an outer circle. The code must not know anything about the outer circles. In short,
+The central rule of The Clean Architecture is the **Dependency Rule**, which says,
 
 > Source code dependencies can only point inwards.
 
-But then, how can information flow from the outside into the inner rings?
+In other words, the source code of each circle can only access code in an inner circle but never any code in an outer circle.
 
-Imagine a common scenario:
+But what is this good for?
 
-* A user clicks a button in the UI to search for a document.
-* The UI passes the action to a controller,
-* the controller triggers the appropriate use case,
-* the use case needs to identify the right document entity.
-* The Entity needs to load the required data.
-* The use case for loading that data determines that it must fetch the data from a database adapter.
-* The database adapter connects the database and runs a query.
-* It passes the result back to the use case,
-* which delivers it to the document entity.
-* The entity forwards the content to the requesting use case,
-* which passes it on to a presenter,
-* which finally updates the UI.
+## A small example without dependency injection
 
-HYPE[Action flow through the layers](actionflow.html)
+As a completely made up and utterly pointless scenario, imagine a poet who writes, well, poems. Poems have to be stored somewhere, so the Chief Software Architect of ACME Poem Processing, Inc. comes up with this architecture:
 
-This action flow passes through the layers inwards and outwards.
+* A top layer (or "inner ring") containing poem documents, and
+* A bottom layer (or "outer ring") containing poem storage entities.
 
-How can we accomplish this if the inner rings do not know anything about the outer rings?
+![A two-layer poem architecture](poemarchitecture.png)
 
-The solution is dependency injection.
+(Granted, this is a rather simplified version of a layered architecture but for our scenario, it is just enough.)
 
-## Dependency Injection demystified
+A document object obviously needs to access the services of a storage object to store and retrieve its contents (blue arrow). Thus it would seem natural to add a storage service directly to the document.
 
-You might already have heard about dependency injection (DI), probably in the context of (non-Go) frameworks like Spring, Guice, etc. Such frameworks might subtly give the impression that DI is not possible without the help of some opaque mechanism that injects the dependencies "for you".
+In our example, our poet surely wants to write the poems into a small notebook, and thus the Lead Programmer creates this document layer:
 
-One of the many good things about Go is that it is largely free of any frameworks. This allows us taking a pragmatic look at DI. And with Go, we can do that right by going through actual code.
+```go
+type Poem struct {
+	content []byte
+	storage *acmeStorageServices.PoemNotebook
+}
 
-I do not build a complete Clean Architecture example here. Rather, I want to focus on DI itself: How to pass actions or information inwards, and how to pass them outwards, without bothering the higher levels with internals of the "lesser levels".
+func NewPoem() *Poem {
+	return &Poem {
+		storage: acmeStorageServices.NewPoemNotebook(),
+	}
+}
 
-Hence the example uses only two rings. The inner ring contains an "Announcement" entity. It provides a method for setting the message, and it knows of a "Speaker" that is able to "Speak()" the message.
+func (p *Poem) Load(title string) {
+	p.content = p.storage.LoadPoem(title)
+}
+func (p *Poem) Save(title string) {
+	storage.SavePoem(title, p.content)
+}
 
-In the outer ring there are two other entities, a "Messenger" that delivers a message to the Announcement entity, and three different entities that take the role of the Speaker, to take and announce a message from an Announcement.
+```
 
-Silly enough, but we want to focus on the DI mechanism anyway.
+Easy enough! But wait--what if our poet decides to write a poem on a napkin? Or on 4x3 index cards? **The document layer would have to be modified and recompiled!** We have created an unwanted dependency on a particular storage type.
 
-## The code
+How can we remove that dependency?
+
+
+## Abstraction to the rescue
+
+As a first step, we can replace the storage service by an abstraction of that service. Using Go's `interface` type, this becomes really easy.
+
+```go
+type PoemStorage interface {
+	LoadPoem(string) []byte
+	WritePoem(string, []byte)
+}
+```
+
+The interface describes only a behavior, and our Poem object can call the interface functions without worring about the object that implements this interface.
+
+Now we can define the Poem struct without any dependency on the storage layer:
+
+```go
+type Poem struct {
+	content []byte
+	storage *PoemStorage
+}
+```
+
+Remember, `PoemStorage` is just an interface but we can assign any type to `storage` that satisfies this interface.
+
+![Poem storage interface](poemabstraction.png)
+
+
+## Adding dependency injection
+
+Right now the Poem only talks to an empty abstraction. As the next step, we need a way to connect a real storage object to the Poem. Here is where we actually inject a dependency into the document layer.
+
+We can do this, for example, through a constructor:
+
+```go
+func NewPoem(ps *PoemStorage) {
+	return &Poem{
+		storage: ps
+	}
+}
+```
+
+Finally, in `main()` or in some dedicated setup function, we can wire up all higher-level objects with their lower-level dependencies.
+
+```go
+func main() {
+	s := NewIndexCardBox()
+	p := NewPoem(s)  // wired up.
+}
+```
+
+At no point did the Poem entity learn about the IndexCardBox storage, yet we just made it use one.
+
+
+HYPE[Clean Poem Architecture with dependency injection](poem.html)
+
+*This is the gist of dependency injection.* There is surely more to it than we were able to go through in this article. The interface/constructor pattern is not the only approach to implementing dependency injection. However, it is a quite appealing one because it is clear and concise and builds upon just a few basic constructs, without the need for some third-party library.
+
+
+## Verba docent exempla trahunt
+
+Words teach, examples lead. With this in mind let me finish this article with a working example.
+
+(Note: The complete lack of error handling or any other kind of sanity checks is intentional for brevity's sake, yet it is anything but exemplary. If you think this sets a bad example for inexperienced readers, then you are probably right and I apologize. Dear inexperienced readers: Use proper error handling. Wherever you can. I am serious about this.)
 
 */
 
 // ## Imports and globals
 package main
 
-import (
-	"fmt"
-	"strings"
-)
-
 // ### The "inner ring"
-//
-// An Announcement contains a message and a "speaker".
-type Announcement struct {
-	message string
-	speaker Speaker
+
+// A `Poem` contains some poetry and an abstract storage reference.
+type Poem struct {
+	content []byte
+	storage *PoemStorage
 }
 
-// The Speaker is just an interface that defines one method, `Speak()`.
-type Speaker interface {
-	Speak(string)
+// `PoemStorage` is just an interface that defines the behavior of a poem storage.
+// This is all that `Poem` knows (and needs to know) about storing and retrieving poems.
+// Nothing from the "outer ring" appears here.
+type PoemStorage interface {
+	Type() string // return a string describing the storage type.
+	LoadPoem(string) []byte
+	SavePoem(string, []byte)
 }
 
-// Set a new Speaker.
-func (a *Announcement) SetSpeaker(s Speaker) {
-	a.speaker = s
+// `NewPoem` constructs a `Poem` object. We use this constructor to inject an object
+// that satisfies the `PoemStorage` interface.
+func NewPoem(ps *PoemStorage) {
+	return &Poem{
+		content: "I am a poem stored in a " + ps.Type() + ".",
+		storage: ps,
+	}
 }
 
-// Get a message delivered from the outside.
-func (a *Announcement) Deliver(m string) {
-	a.message = m
+// Save simply calls `SavePoem` on the interface type. The `Poem` object neither knows
+// nor cares about which actual storage object receives this method call.
+func (p *Poem) Save(name string) {
+	p.storage.SavePoem(name, p.content)
 }
 
-// Announce a message to the outside.
-//
-// Note that up to this point, there are **no dependencies on the outer layer**.
-func (a *Announcement) Announce() {
-	a.speaker.Speak(a.message)
+// `Load` also invokes the injected storage object without knowing it.
+func (p *Poem) Load(name string) {
+	p.content = p.storage.LoadPoem(name)
 }
 
-// ## The outer ring
-//
-// A newscaster.
-type Newscaster struct{}
+// ### The "outer ring"
 
-// The newscaster implements the Speak method and therefore can act as a speaker for an Announcement.
-func (n *Newscaster) Speak(msg string) {
-	fmt.Println("Breaking news:", msg)
+// #### The notebook
+
+// A `Notebook` is the classic storage device of a poet.
+type Notebook struct {
+	poems map[string][]byte
 }
 
-// Another speaker.
-type Preacher struct{}
-
-func (p *Preacher) Speak(msg string) {
-	fmt.Println("And so the prophets say:", msg)
+func NewNotebook() {
+	poems = map[string][]byte{}
 }
 
-// And another.
-//
-// The inner ring does not have any knowledge about these speakers.
-type SalesPromoter struct{}
-
-func (s *SalesPromoter) Speak(msg string) {
-	fmt.Println(strings.ToUpper(msg), "!!! BUY NOW!!!")
-	fmt.Println()
+// After adding `StorePoem` and `LoadPoem`, `Notebook` implicitly satisfies `PoemStorage`.
+func (n *Notebook) StorePoem(title string, contents []byte) {
+	poems[title] = contents
 }
 
-// This is the messenger. It knows about the Announcement entity, but this
-// is an inward dependency and hence perfectly fine.
-type Messenger struct {
-	message string
-	ann     *Announcement
+func (n *Notebook) LoadPoem(title string) []byte {
+	return poems[title]
 }
 
-func NewMessenger(m string, a *Announcement) *Messenger {
-	return &Messenger{m, a}
+// `Type` returns an informal description of the storage type.
+func (n *Notebook) Type() {
+	return "Notebook"
 }
 
-// The Messenger passes the message to the Announcement entity.
-// This is how information flows inward.
-func (m *Messenger) Deliver() {
-	m.ann.Deliver(m.message)
+// A `Napkin` is the emergency storage device of a poet.
+// It can store only one poem.
+type Napkin struct {
+	poem []byte
 }
 
-// In main, everything is put into place. Here,
-// the actual objects are created, and the dependencies get injected.
+func NewNapkin() {
+	poem = ""
+}
+
+func (n *Napkin) StorePoem(title string, contents []byte) {
+	poem = contents
+}
+
+func (n *Napkin) LoadPoem(title string) []byte {
+	return poem
+}
+
+func (n *Napkin) Type() {
+	return "Napkin"
+}
+
+// Finally, the `IndexCardBox`.
+type IndexCardBox struct {
+	indexCards map[string][]byte
+}
+
+func NewIndexCardBox() {
+	indexCards = map[string][]byte{}
+}
+
+func (b *IndexCardBox) StorePoem(title string, contents []byte) {
+	indexCards[title] = contents
+}
+
+func (b *IndexCardBox) LoadPoem(title string) []byte {
+	return indexCards[title]
+}
+
+func (n *IndexCardBox) Type() {
+	return "IndexCardBox"
+}
+
+// ### Wiring everything up
+
+// Create and connect objects, then save and load a few poems from different storage objects.
 func main() {
-	// Create the speakers.
-	n := &Newscaster{}
-	p := &Preacher{}
-	s := &SalesPromoter{}
+	notebook := NewNotebook()
+	napkin := NewNapkin()
+	box := NewIndexCardBox()
 
-	// Create announcment and messenger.
-	a := &Announcement{}
-	m := NewMessenger("Gophers are really smart", a)
-	m.Deliver()
+	// First, write a poem into a notebook.
+	poem := NewPoem(notebook)
+	poem
 
-	// And here we inject a dependency. Although `a` does not know
-	// any types, functions, or variables from the outer ring, it now has a Speaker.
-	a.SetSpeaker(n)
-
-	// `a` can now announce its message without knowing the speaker at all.
-	a.Announce()
-
-	// Now the speaker changes, and `a` does not need to care a bit.
-	a.SetSpeaker(p)
-	a.Announce()
-
-	// And another speaker.
-	a.SetSpeaker(s)
-	a.Announce()
 }
 
-/* Thanks to interfaces, the Announcement entity does not need to know anything about the different speaker types.
+/* ## Conclusion
 
-And passing information inwards is outright trivial, once the outer ring has access to the objects of the inner ring.
+Outside the world of poetry, dependency injection is a useful tool for decoupling logical entities, especially in multi-layered architectures as we have seen above.
 
-A question to you: Can we inject dependencies without using interfaces?
+Besides the support for layered architectures, dependency injection also comes in handy
 
 
 ## Further reading
 
 I definitely recommend reading the aforementioned [article about the Clean Architecture](http://blog.8thlight.com/uncle-bob/2012/08/13/the-clean-architecture.html) by [Robert "Uncle Bob" Martin](https://de.wikipedia.org/wiki/Robert_Cecil_Martin).
 
-The excellent article [Applying The Clean Architecture to Go applications](http://manuel.kiessling.net/2012/09/28/applying-the-clean-architecture-to-go-applications/) is a deep dive into impelenting DI in Go that builds upon all four layers of the Clean Architecture. This is a great opportunity to see how entities, use cases, interfaces, and frameworks (speaking in Clean Architecture lingo) are utilized to build a (toy) shop system.
+The excellent article [Applying The Clean Architecture to Go applications](http://manuel.kiessling.net/2012/09/28/applying-the-clean-architecture-to-go-applications/) is a deep dive into implementing DI in Go that builds upon all four layers of the Clean Architecture. This is a great opportunity to see how entities, use cases, interfaces, and frameworks (speaking in Clean Architecture lingo) are utilized to build a (toy) shop system.
 */
