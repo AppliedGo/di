@@ -161,12 +161,14 @@ Words teach, examples lead. With this in mind let me finish this article with a 
 // ## Imports and globals
 package main
 
+import "fmt"
+
 // ### The "inner ring"
 
 // A `Poem` contains some poetry and an abstract storage reference.
 type Poem struct {
 	content []byte
-	storage *PoemStorage
+	storage PoemStorage
 }
 
 // `PoemStorage` is just an interface that defines the behavior of a poem storage.
@@ -180,9 +182,9 @@ type PoemStorage interface {
 
 // `NewPoem` constructs a `Poem` object. We use this constructor to inject an object
 // that satisfies the `PoemStorage` interface.
-func NewPoem(ps *PoemStorage) {
+func NewPoem(ps PoemStorage) *Poem {
 	return &Poem{
-		content: "I am a poem stored in a " + ps.Type() + ".",
+		content: []byte("I am a poem from a(n) " + ps.Type() + "."),
 		storage: ps,
 	}
 }
@@ -198,6 +200,12 @@ func (p *Poem) Load(name string) {
 	p.content = p.storage.LoadPoem(name)
 }
 
+// `String` makes Poem a Stringer, allowing us to drop it anywhere a string would be
+// expected.
+func (p *Poem) String() string {
+	return string(p.content)
+}
+
 // ### The "outer ring"
 
 // #### The notebook
@@ -207,21 +215,23 @@ type Notebook struct {
 	poems map[string][]byte
 }
 
-func NewNotebook() {
-	poems = map[string][]byte{}
+func NewNotebook() *Notebook {
+	return &Notebook{
+		poems: map[string][]byte{},
+	}
 }
 
-// After adding `StorePoem` and `LoadPoem`, `Notebook` implicitly satisfies `PoemStorage`.
-func (n *Notebook) StorePoem(title string, contents []byte) {
-	poems[title] = contents
+// After adding `SavePoem` and `LoadPoem`, `Notebook` implicitly satisfies `PoemStorage`.
+func (n *Notebook) SavePoem(title string, contents []byte) {
+	n.poems[title] = contents
 }
 
 func (n *Notebook) LoadPoem(title string) []byte {
-	return poems[title]
+	return n.poems[title]
 }
 
 // `Type` returns an informal description of the storage type.
-func (n *Notebook) Type() {
+func (n *Notebook) Type() string {
 	return "Notebook"
 }
 
@@ -231,19 +241,21 @@ type Napkin struct {
 	poem []byte
 }
 
-func NewNapkin() {
-	poem = ""
+func NewNapkin() *Napkin {
+	return &Napkin{
+		poem: []byte{},
+	}
 }
 
-func (n *Napkin) StorePoem(title string, contents []byte) {
-	poem = contents
+func (n *Napkin) SavePoem(title string, contents []byte) {
+	n.poem = contents
 }
 
 func (n *Napkin) LoadPoem(title string) []byte {
-	return poem
+	return n.poem
 }
 
-func (n *Napkin) Type() {
+func (n *Napkin) Type() string {
 	return "Napkin"
 }
 
@@ -252,19 +264,21 @@ type IndexCardBox struct {
 	indexCards map[string][]byte
 }
 
-func NewIndexCardBox() {
-	indexCards = map[string][]byte{}
+func NewIndexCardBox() *IndexCardBox {
+	return &IndexCardBox{
+		indexCards: map[string][]byte{},
+	}
 }
 
-func (b *IndexCardBox) StorePoem(title string, contents []byte) {
-	indexCards[title] = contents
+func (b *IndexCardBox) SavePoem(title string, contents []byte) {
+	b.indexCards[title] = contents
 }
 
 func (b *IndexCardBox) LoadPoem(title string) []byte {
-	return indexCards[title]
+	return b.indexCards[title]
 }
 
-func (n *IndexCardBox) Type() {
+func (n *IndexCardBox) Type() string {
 	return "IndexCardBox"
 }
 
@@ -277,9 +291,29 @@ func main() {
 	box := NewIndexCardBox()
 
 	// First, write a poem into a notebook.
+	// `NewPoem()` injects the dependency.
 	poem := NewPoem(notebook)
-	poem
+	poem.Save("My first poem")
 
+	// Create a new poem object to prove that the notebook storage works.
+	poem = NewPoem(notebook)
+	poem.Load("My first poem")
+	fmt.Println(poem)
+
+	// Now we do the same with a napkin as storage.
+	poem = NewPoem(napkin)
+	// Note the poem still uses `Save` and `Load` unchanged. "Notebook? Napkin? I don't care."
+	poem.Save("My first poem")
+	poem = NewPoem(napkin)
+	poem.Load("My first poem")
+	fmt.Println(poem)
+
+	// Finally, the index card box.
+	poem = NewPoem(box)
+	poem.Save("My first poem")
+	poem = NewPoem(box)
+	poem.Load("My first poem")
+	fmt.Println(poem)
 }
 
 /* ## Conclusion
