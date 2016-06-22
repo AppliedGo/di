@@ -192,7 +192,7 @@ func NewPoem(ps PoemStorage) *Poem {
 	}
 }
 
-// Save simply calls `SavePoem` on the interface type. The `Poem` object neither knows
+// `Save` simply calls `SavePoem` on the interface type. The `Poem` object neither knows
 // nor cares about which actual storage object receives this method call.
 func (p *Poem) Save(name string) {
 	p.storage.SavePoem(name, p.content)
