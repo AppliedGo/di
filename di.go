@@ -70,7 +70,7 @@ In our example, our poet surely wants to write the poems into a small notebook, 
 ```go
 type Poem struct {
 	content []byte
-	storage *acmeStorageServices.PoemNotebook
+	storage acmeStorageServices.PoemNotebook
 }
 
 func NewPoem() *Poem {
@@ -80,10 +80,10 @@ func NewPoem() *Poem {
 }
 
 func (p *Poem) Load(title string) {
-	p.content = p.storage.LoadPoem(title)
+	p.content = p.storage.Load(title)
 }
 func (p *Poem) Save(title string) {
-	storage.SavePoem(title, p.content)
+	storage.Save(title, p.content)
 }
 ```
 
@@ -98,8 +98,8 @@ As a first step, we can replace the storage service by an abstraction of that se
 
 ```go
 type PoemStorage interface {
-	LoadPoem(string) []byte
-	WritePoem(string, []byte)
+	Load(string) []byte
+	Save(string, []byte)
 }
 ```
 
@@ -110,7 +110,7 @@ Now we can define the Poem struct without any dependency on the storage layer:
 ```go
 type Poem struct {
 	content []byte
-	storage *PoemStorage
+	storage PoemStorage
 }
 ```
 
@@ -178,9 +178,9 @@ type Poem struct {
 // This is all that `Poem` knows (and needs to know) about storing and retrieving poems.
 // Nothing from the "outer ring" appears here.
 type PoemStorage interface {
-	Type() string            // Return a string describing the storage type.
-	LoadPoem(string) []byte  // Load a poem by name.
-	SavePoem(string, []byte) // Save a poem by name.
+	Type() string        // Return a string describing the storage type.
+	Load(string) []byte  // Load a poem by name.
+	Save(string, []byte) // Save a poem by name.
 }
 
 // `NewPoem` constructs a `Poem` object. We use this constructor to inject an object
@@ -192,15 +192,15 @@ func NewPoem(ps PoemStorage) *Poem {
 	}
 }
 
-// `Save` simply calls `SavePoem` on the interface type. The `Poem` object neither knows
+// `Save` simply calls `Save` on the interface type. The `Poem` object neither knows
 // nor cares about which actual storage object receives this method call.
 func (p *Poem) Save(name string) {
-	p.storage.SavePoem(name, p.content)
+	p.storage.Save(name, p.content)
 }
 
 // `Load` also invokes the injected storage object without knowing it.
 func (p *Poem) Load(name string) {
-	p.content = p.storage.LoadPoem(name)
+	p.content = p.storage.Load(name)
 }
 
 // `String` makes Poem a Stringer, allowing us to drop it anywhere a string would be
@@ -224,12 +224,12 @@ func NewNotebook() *Notebook {
 	}
 }
 
-// After adding `SavePoem` and `LoadPoem`, `Notebook` implicitly satisfies `PoemStorage`.
-func (n *Notebook) SavePoem(name string, contents []byte) {
+// After adding `Save` and `Load`, `Notebook` implicitly satisfies `PoemStorage`.
+func (n *Notebook) Save(name string, contents []byte) {
 	n.poems[name] = contents
 }
 
-func (n *Notebook) LoadPoem(name string) []byte {
+func (n *Notebook) Load(name string) []byte {
 	return n.poems[name]
 }
 
@@ -250,11 +250,11 @@ func NewNapkin() *Napkin {
 	}
 }
 
-func (n *Napkin) SavePoem(name string, contents []byte) {
+func (n *Napkin) Save(name string, contents []byte) {
 	n.poem = contents
 }
 
-func (n *Napkin) LoadPoem(name string) []byte {
+func (n *Napkin) Load(name string) []byte {
 	return n.poem
 }
 
