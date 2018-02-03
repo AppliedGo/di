@@ -128,7 +128,7 @@ In other words, we need to *inject a dependency* on a PoemStorage object into th
 We can do this, for example, through a constructor:
 
 ```go
-func NewPoem(ps *PoemStorage) {
+func NewPoem(ps *PoemStorage) *Poem {
 	return &Poem{
 		storage: ps
 	}
