@@ -15,9 +15,9 @@ author = "Christoph Berger"
 email = "chris@appliedgo.net"
 date = "2016-06-23"
 publishdate = "2016-06-23"
-domains = ["Architecture"]
+categories = ["Architecture"]
 tags = ["Dependency Injection", "Separation Of Concerns", "Interface"]
-categories = ["Tutorial"]
+articletypes = ["Tutorial"]
 +++
 
 Layered software architectures adhere to the *Dependency Rule:* Source code in a lower-level layer can make use of code in higher-level layers, but never vice versa. Control flow, however, goes in both directions. How is this possible, given that higher-level code must not know anything about the code in lower levels?
@@ -128,7 +128,7 @@ In other words, we need to *inject a dependency* on a PoemStorage object into th
 We can do this, for example, through a constructor:
 
 ```go
-func NewPoem(ps *PoemStorage) *Poem {
+func NewPoem(ps PoemStorage) *Poem {
 	return &Poem{
 		storage: ps
 	}
